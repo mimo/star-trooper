@@ -39,12 +39,7 @@ function Level:load (pathStr)
   self.map =  require(pathStr)
 
   for i, tileset in ipairs (self.map.tilesets) do
-    print ("The map need the tileset" .. tileset.filename)
-    -- Assuming the tileset file and its texture have the same basename
-    local imagePath = string.gsub (tileset.filename, ".tsx", ".png")
-    -- remove the dot & slash to have "res/vaisseau.png" and avoid error
-    --    "Could not open file ./res/vaisseau.png. Does not exist."
-    imagePath = string.sub (imagePath, 3)
+    local imagePath = "res/"..tileset.image
     Level:addTileset (imagePath, tileset.name, tileset.tilewidth, tileset.tileheight)
   end
 
@@ -56,7 +51,7 @@ function Level:draw ( )
 
   local yellow = { 0.9, 0.8, 0.6, 1 }
   local red = { 0.9, 0.1, 0.1, 1 }
-  local coloredText = {yellow, "/!\\ ", red, "Level:draw not implemented", yellow, " /!\\"}
+  local coloredText = {yellow, "/!\\ ", red, "For emergency press 'Escape'", yellow, " /!\\"}
   love.graphics.print (coloredText, 10, 50)
 
   local tileset = self.tileSets[1]
@@ -89,12 +84,15 @@ function love.update ( )
 end
 
 function love.load ( )
-  Level:load ("res/niveau-vaisseau")
+  --Level:load ("res/niveau-vaisseau")
+  Level:load ("res/level1")
 end
 
 function love.draw ( )
-    love.graphics.setColor (0.1, 0.2, 1, 1)
-    love.graphics.print ("Welcome to StarTrooper ... For emergency press 'Escape'", 10, 10)
-    love.graphics.setColor (1, 1, 1, 1 )
-    Level:draw ( )
+  Level:draw ( )
+
+  love.graphics.setColor (0.1, 0.2, 1, 1)
+  love.graphics.print ("Welcome StarTrooper ...", 10, 10)
+  love.graphics.setColor (1, 1, 1, 1 )
+
 end
