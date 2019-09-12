@@ -82,12 +82,13 @@ local Player = {}
 
 function Player:load  ()
   self.texture = love.graphics.newImage("res/player.png")
-  self.textureSize = {x = 16, y = 16}
+  self.spriteSize = {x = 16, y = 16}
   self.frametime =  0
   self.deltaS = 0.25
   self.currentSprite = 1
   self.currentAnim = 'left'
   self.animationsOrder = {'right', 'left', 'up', 'down'}
+  self.x, self.y = 0, 0
 
   local animations = {}
   animations['left'] = {}
@@ -96,10 +97,10 @@ function Player:load  ()
   animations['down'] = {}
 
   for animId = 1, 4 do
-    local oy = (animId - 1) * self.textureSize.y
+    local oy = (animId - 1) * self.spriteSize.y
     for frameId = 1, 4 do
-      local ox = (frameId - 1) * self.textureSize.x
-      local sprite = love.graphics.newQuad (ox, oy, self.textureSize.x, self.textureSize.y, self.texture:getWidth(), self.texture:getHeight() )
+      local ox = (frameId - 1) * self.spriteSize.x
+      local sprite = love.graphics.newQuad (ox, oy, self.spriteSize.x, self.spriteSize.y, self.texture:getWidth(), self.texture:getHeight() )
       local animationName = self.animationsOrder[animId]
       table.insert (animations[animationName], sprite)
     end
@@ -127,8 +128,23 @@ function Player:update (dt)
 
 end
 
-function Player:draw(x, y)
-  love.graphics.draw (self.texture, self.animations[self.currentAnim][self.currentSprite], x, y, 0, 1.6, 1.6)
+function Player:draw(offsetx, offsety)
+  local anim = self.animations[self.currentAnim]
+  local sprite = anim[self.currentSprite]
+  local x = self.x + offsetx
+  local y = self.y + offsety
+  local ox = self.spriteSize.x / 2
+  local oy = self.spriteSize.y / 2
+
+  love.graphics.draw (self.texture, sprite, x, y, 0, 1.6, 1.6, ox, oy)
+end
+------------------------------------------------------
+function drawCursor ()
+  local size = 4
+  local x = love.mouse.getX()
+  local y = love.mouse.getY()
+  love.graphics.setColor(0.1, 0.3, 1)
+  love.graphics.line (x, y - size, x, y + size, x - size, y, x + size, y)
 end
 ------------------------------------------------------
 local px, py
@@ -144,6 +160,7 @@ end
 
 function love.load ( )
   love.window.setTitle ("Star Trooper - GC GameJam #21")
+  love.mouse.setVisible(false)
 
   Level:load ("res/level1")
   local marginx = (love.graphics:getWidth() - Level.viewSize.w) / 2
@@ -152,14 +169,19 @@ function love.load ( )
   py = math.floor(marginy + titleHeight)
 
   Player:load()
+  Player.x = 16 * 10 + py
+  Player.y = 16 * 10 + py
 end
 
 function love.draw ( )
+
   love.graphics.push()
   love.graphics.scale (1.25, 1.25)
+    love.graphics.setPointSize(2)
   Level:draw (px, py)
   -- TODO Level:mapCellCenter(col, row)
-  Player:draw(px + 16 * 10, py + 16 * 10)
+    Player:draw(0, 0)
+    drawCursor ()
   love.graphics.pop()
 
   love.graphics.setColor (0.1, 0.2, 1, 1)
