@@ -77,24 +77,90 @@ function Level:draw (x, y)
   end
 end
 ------------------------------------------------------
+-- TODO : rename Player into Entity
+local Player = {}
+
+function Player:load  ()
+  self.texture = love.graphics.newImage("res/player.png")
+  self.textureSize = {x = 16, y = 16}
+  self.frametime =  0
+  self.deltaS = 0.25
+  self.currentSprite = 1
+  self.currentAnim = 'left'
+  self.animationsOrder = {'right', 'left', 'up', 'down'}
+
+  local animations = {}
+  animations['left'] = {}
+  animations['right'] = {}
+  animations['up'] = {}
+  animations['down'] = {}
+
+  for animId = 1, 4 do
+    local oy = (animId - 1) * self.textureSize.y
+    for frameId = 1, 4 do
+      local ox = (frameId - 1) * self.textureSize.x
+      local sprite = love.graphics.newQuad (ox, oy, self.textureSize.x, self.textureSize.y, self.texture:getWidth(), self.texture:getHeight() )
+      local animationName = self.animationsOrder[animId]
+      table.insert (animations[animationName], sprite)
+    end
+  end
+
+  self.animations = animations
+end
+
+function Player:update (dt)
+  self.frametime = self.frametime + dt
+
+  local function doswitch()
+    local anim = self.animations[self.currentAnim]
+    if self.currentSprite < #anim then
+      self.currentSprite = self.currentSprite + 1
+    else
+      self.currentSprite = 1
+    end
+  end
+
+  if self.frametime > self.deltaS then
+    self.frametime = 0
+    doswitch()
+  end
+
+end
+
+function Player:draw(x, y)
+  love.graphics.draw (self.texture, self.animations[self.currentAnim][self.currentSprite], x, y, 0, 1.6, 1.6)
+end
+------------------------------------------------------
 local px, py
 local titleHeight = 75
 
-function love.update ( )
+love.graphics.setDefaultFilter("nearest")
+
+function love.update (dt)
   if love.keyboard.isDown ('escape') then love.event.quit (0) end
+
+  Player:update (dt)
 end
 
 function love.load ( )
+  love.window.setTitle ("Star Trooper - GC GameJam #21")
+
   Level:load ("res/level1")
   local marginx = (love.graphics:getWidth() - Level.viewSize.w) / 2
   local marginy = (love.graphics:getHeight() - titleHeight - Level.viewSize.h ) / 2
   px = math.floor(marginx)
   py = math.floor(marginy + titleHeight)
-  print ("px,py = "..tostring(px)..", "..tostring(py))
+
+  Player:load()
 end
 
 function love.draw ( )
+  love.graphics.push()
+  love.graphics.scale (1.25, 1.25)
   Level:draw (px, py)
+  -- TODO Level:mapCellCenter(col, row)
+  Player:draw(px + 16 * 10, py + 16 * 10)
+  love.graphics.pop()
 
   love.graphics.setColor (0.1, 0.2, 1, 1)
   love.graphics.print ("Welcome StarTrooper ...", 10, 10)
@@ -104,5 +170,4 @@ function love.draw ( )
   local red = { 0.9, 0.1, 0.1, 1 }
   local coloredText = {yellow, "/!\\ ", red, "For emergency press 'Escape'", yellow, " /!\\"}
   love.graphics.print (coloredText, 10, 50)
-
 end
