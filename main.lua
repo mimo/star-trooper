@@ -109,8 +109,25 @@ function Player:load  ()
   self.animations = animations
 end
 
+-- angles at which player orientation change
+a1 = math.pi / 4
+a2 = a1 * 3
+a3 = a1 + math.pi
+a4 = a2 + math.pi
+
 function Player:update (dt)
-  self.frametime = self.frametime + dt
+  self.xm = love.mouse.getX() - self.x
+  self.ym = -1 *(love.mouse.getY() - self.y)
+  local xy = math.sqrt(self.xm* self.xm + self.ym*self.ym)
+  local theta = math.acos (self.xm / xy)
+  if self.ym < 0 then theta = math.pi * 2 - theta end
+
+  if theta < a1 
+  or theta > a4     then self.currentAnim = 'right'
+  elseif theta < a2 then self.currentAnim = 'up'
+  elseif theta < a3 then self.currentAnim = 'left'
+  else self.currentAnim = 'down'
+  end
 
   local function doswitch()
     local anim = self.animations[self.currentAnim]
@@ -121,6 +138,7 @@ function Player:update (dt)
     end
   end
 
+  self.frametime = self.frametime + dt
   if self.frametime > self.deltaS then
     self.frametime = 0
     doswitch()
@@ -176,10 +194,10 @@ end
 function love.draw ( )
 
   love.graphics.push()
-  love.graphics.scale (1.25, 1.25)
+    love.graphics.scale (1.25, 1.25)
     love.graphics.setPointSize(2)
-  Level:draw (px, py)
-  -- TODO Level:mapCellCenter(col, row)
+    Level:draw (px, py)
+    -- TODO Level:mapCellCenter(col, row)
     Player:draw(0, 0)
     drawCursor ()
   love.graphics.pop()
