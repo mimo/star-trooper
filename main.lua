@@ -161,7 +161,10 @@ function drawCursor ()
   local x = love.mouse.getX()
   local y = love.mouse.getY()
   love.graphics.setColor(0.1, 0.3, 1)
-  love.graphics.line (x, y - size, x, y + size, x - size, y, x + size, y)
+  love.graphics.setLineWidth (2)
+  love.graphics.line (x, y - size, x - size, y, x, y + size, x + size, y, x, y - size)
+  love.graphics.setPointSize(2)
+  love.graphics.points (x, y)
 end
 
 function player:changeAnimation ()
