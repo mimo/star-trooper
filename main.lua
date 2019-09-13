@@ -149,6 +149,14 @@ function Entity:move (movement)
   dx = speed * math.cos(self.orientation)
   dy = speed * math.sin(self.orientation) * way ()
 
+  if movement.left ~= nil then
+    speed = movement.left
+    local theta = self.orientation - math.pi / 2
+  elseif movement.right ~= nil then
+    speed = movement.right
+    local theta = self.orientation + math.pi / 2
+  end
+
   newposx = newposx + dx
   newposy = newposy + dy
 
@@ -256,7 +264,6 @@ function love.draw ( )
 
   love.graphics.push()
     love.graphics.scale (1.25, 1.25)
-    love.graphics.setPointSize(2)
     Level:draw (game.viewport.x, game.viewport.y)
     -- TODO Level:mapCellCenter(col, row)
     player:draw(0, 0)
