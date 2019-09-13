@@ -46,7 +46,6 @@ function Level:load (pathStr)
 
   self.viewSize.w = self.map.width * self.map.tilewidth
   self.viewSize.h = self.map.height * self.map.tileheight
-
 end
 
 function Level:draw (x, y)
@@ -87,8 +86,9 @@ function Entity:new(name)
   instance.spritesheet = {}
   instance.spriteSize = {x = 0, y = 0}
   instance.texture = {}
+  instance.orientation = 0
   -- variables for animation
-  instance.currentAnim = 'up'
+  instance.currentAnim = ''
   instance.frametime =  0
   instance.deltaS = 0.25
   instance.currentFrame = 1
@@ -128,6 +128,39 @@ function Entity:update(dt)
   end
 end
 
+function Entity:move (movement)
+  local newposx = self.x 
+  local newposy = self.y
+
+  local dx, dy = 0, 0
+  local way = function ()
+    if self.orientation > 180 then return 1 else return -1 end
+  end
+  local topositive = function (number)
+    if number > 1 then return number else return 1 end
+  end
+
+  local speed = 0
+
+  if movement.forward ~= nil then speed = movement.forward
+  elseif movement.backward ~= nil then speed = movement.backward * -1
+  end
+
+  dx = speed * math.cos(self.orientation)
+  dy = speed * math.sin(self.orientation) * way ()
+
+  newposx = newposx + dx
+  newposy = newposy + dy
+
+  -- TODO
+  --col, row = Level:map()
+ --local tileType = Game.map.grid[row][col]
+  local tileType = 8
+
+  if tileType == 8 or tileType == 7 then
+    self.x = topositive (newposx)
+    self.y = topositive (newposy)
+  end
 end
 
 function Entity:draw(offsetx, offsety)
@@ -170,7 +203,7 @@ end
 function player:changeAnimation ()
   self.xm = love.mouse.getX() - self.x
   self.ym = -1 *(love.mouse.getY() - self.y)
-  local xy = math.sqrt(self.xm* self.xm + self.ym*self.ym)
+  local xy = math.sqrt(self.xm^2 + self.ym^2)
   local theta = math.acos (self.xm / xy)
   if self.ym < 0 then theta = math.pi * 2 - theta end
 
@@ -180,11 +213,20 @@ function player:changeAnimation ()
   elseif theta < self.angles[3] then self.currentAnim = 'left'
   else self.currentAnim = 'down'
   end
+  self.orientation = theta
 end
 ------------------------------------------------------
 -- LOVE CALLBACKS
 ----
 function love.update (dt)
+  if love.keyboard.isDown("down")   then player:move ({ backward =  1 })
+  elseif love.keyboard.isDown("up") then player:move ({ forward = 2 })
+  end
+
+  if     love.keyboard.isDown("right") then player:move ({ right =  1.5 })
+  elseif love.keyboard.isDown("left")  then player:move ({ left = 1.5 })
+  end
+
   player:changeAnimation()
   player:update (dt)
 end
@@ -229,4 +271,8 @@ function love.draw ( )
   local red = { 0.9, 0.1, 0.1, 1 }
   local coloredText = {yellow, "/!\\ ", red, "For emergency press 'Escape'", yellow, " /!\\"}
   love.graphics.print (coloredText, 10, 50)
+end
+
+function love.keypressed(key)
+  if love.keyboard.isDown ('escape') then love.event.quit (0) end
 end
