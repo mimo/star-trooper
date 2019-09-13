@@ -77,64 +77,47 @@ function Level:draw (x, y)
   end
 end
 ------------------------------------------------------
--- TODO : rename Player into Entity
-local Player = {}
+Entity = {}
+Entity.name = "foo"
 
-function Player:load  ()
-  self.texture = love.graphics.newImage("res/player.png")
-  self.spriteSize = {x = 16, y = 16}
-  self.frametime =  0
-  self.deltaS = 0.25
-  self.currentSprite = 1
-  self.currentAnim = 'left'
-  self.animationsOrder = {'right', 'left', 'up', 'down'}
-  self.x, self.y = 0, 0
-
-  local animations = {}
-  animations['left'] = {}
-  animations['right'] = {}
-  animations['up'] = {}
-  animations['down'] = {}
-
-  for animId = 1, 4 do
-    local oy = (animId - 1) * self.spriteSize.y
-    for frameId = 1, 4 do
-      local ox = (frameId - 1) * self.spriteSize.x
-      local sprite = love.graphics.newQuad (ox, oy, self.spriteSize.x, self.spriteSize.y, self.texture:getWidth(), self.texture:getHeight() )
-      local animationName = self.animationsOrder[animId]
-      table.insert (animations[animationName], sprite)
-    end
-  end
-
-  self.animations = animations
+function Entity:new(name)
+  local instance = {}
+  instance.x, instance.y = 0, 0
+  instance.name = name
+  instance.spritesheet = {}
+  instance.spriteSize = {x = 0, y = 0}
+  instance.texture = {}
+  -- variables for animation
+  instance.currentAnim = 'up'
+  instance.frametime =  0
+  instance.deltaS = 0.25
+  instance.currentFrame = 1
+  self.__index = self
+  return setmetatable (instance, self)
 end
 
--- angles at which player orientation change
-a1 = math.pi / 4
-a2 = a1 * 3
-a3 = a1 + math.pi
-a4 = a2 + math.pi
+function Entity:loadSprites (file, sizeX, sizeY)
+  self.texture = love.graphics.newImage(file)
+  self.spriteSize = {x = sizeX, y = sizeY}
+end
 
-function Player:update (dt)
-  self.xm = love.mouse.getX() - self.x
-  self.ym = -1 *(love.mouse.getY() - self.y)
-  local xy = math.sqrt(self.xm* self.xm + self.ym*self.ym)
-  local theta = math.acos (self.xm / xy)
-  if self.ym < 0 then theta = math.pi * 2 - theta end
+function Entity:setupAnimation (name, count, row)
+  self.spritesheet[name] = {}
+  local oy = (row - 1) * self.spriteSize.y
+  for frameId = 1, count do
+      local ox = (frameId - 1) * self.spriteSize.x
+      local sprite = love.graphics.newQuad (ox, oy, self.spriteSize.x, self.spriteSize.y, self.texture:getWidth(), self.texture:getHeight() )
+      table.insert (self.spritesheet[name], sprite)
+    end
+end
 
-  if theta < a1 
-  or theta > a4     then self.currentAnim = 'right'
-  elseif theta < a2 then self.currentAnim = 'up'
-  elseif theta < a3 then self.currentAnim = 'left'
-  else self.currentAnim = 'down'
-  end
-
+function Entity:update(dt)
   local function doswitch()
-    local anim = self.animations[self.currentAnim]
-    if self.currentSprite < #anim then
-      self.currentSprite = self.currentSprite + 1
+    local anim = self.spritesheet[self.currentAnim]
+    if self.currentFrame < #anim then
+      self.currentFrame = self.currentFrame + 1
     else
-      self.currentSprite = 1
+      self.currentFrame = 1
     end
   end
 
@@ -143,12 +126,13 @@ function Player:update (dt)
     self.frametime = 0
     doswitch()
   end
+end
 
 end
 
-function Player:draw(offsetx, offsety)
-  local anim = self.animations[self.currentAnim]
-  local sprite = anim[self.currentSprite]
+function Entity:draw(offsetx, offsety)
+  local animation = self.spritesheet[self.currentAnim]
+  local sprite = animation[self.currentFrame]
   local x = self.x + offsetx
   local y = self.y + offsety
   local ox = self.spriteSize.x / 2
@@ -157,6 +141,21 @@ function Player:draw(offsetx, offsety)
   love.graphics.draw (self.texture, sprite, x, y, 0, 1.6, 1.6, ox, oy)
 end
 ------------------------------------------------------
+-- GLOBAL OBJECTS
+----
+local game = {}
+game.viewport = {x = 0, y = 0, width = 0, height = 0 }
+game.titleHeight = 75
+local player = Entity:new("alexis")
+-- angles at which entity orientation change
+player.angles = {
+  math.pi / 4,
+  math.pi * 3/4,
+  math.pi / 4   + math.pi,
+  math.pi * 3/4 + math.pi }
+------------------------------------------------------
+-- GLOBAL FUNCTIONS
+----
 function drawCursor ()
   local size = 4
   local x = love.mouse.getX()
@@ -164,31 +163,48 @@ function drawCursor ()
   love.graphics.setColor(0.1, 0.3, 1)
   love.graphics.line (x, y - size, x, y + size, x - size, y, x + size, y)
 end
+
+function player:changeAnimation ()
+  self.xm = love.mouse.getX() - self.x
+  self.ym = -1 *(love.mouse.getY() - self.y)
+  local xy = math.sqrt(self.xm* self.xm + self.ym*self.ym)
+  local theta = math.acos (self.xm / xy)
+  if self.ym < 0 then theta = math.pi * 2 - theta end
+
+  if theta < self.angles[1]
+  or theta > self.angles[4] then self.currentAnim = 'right'
+  elseif theta < self.angles[2] then self.currentAnim = 'up'
+  elseif theta < self.angles[3] then self.currentAnim = 'left'
+  else self.currentAnim = 'down'
+  end
+end
 ------------------------------------------------------
-local px, py
-local titleHeight = 75
-
-love.graphics.setDefaultFilter("nearest")
-
+-- LOVE CALLBACKS
+----
 function love.update (dt)
-  if love.keyboard.isDown ('escape') then love.event.quit (0) end
-
-  Player:update (dt)
+  player:changeAnimation()
+  player:update (dt)
 end
 
 function love.load ( )
   love.window.setTitle ("Star Trooper - GC GameJam #21")
   love.mouse.setVisible(false)
+  love.graphics.setDefaultFilter("nearest")
 
   Level:load ("res/level1")
   local marginx = (love.graphics:getWidth() - Level.viewSize.w) / 2
-  local marginy = (love.graphics:getHeight() - titleHeight - Level.viewSize.h ) / 2
-  px = math.floor(marginx)
-  py = math.floor(marginy + titleHeight)
+  local marginy = (love.graphics:getHeight() - game.titleHeight - Level.viewSize.h ) / 2
+  game.viewport.x = math.floor(marginx)
+  game.viewport.y = math.floor(marginy + game.titleHeight)
 
-  Player:load()
-  Player.x = 16 * 10 + py
-  Player.y = 16 * 10 + py
+  player:loadSprites("res/player.png", 16, 16)
+  player:setupAnimation ('left',  4, 2)
+  player:setupAnimation ('right', 4, 1)
+  player:setupAnimation ('up',    4, 3)
+  player:setupAnimation ('down',  4, 4)
+
+  player.x = 16 * 10 + game.viewport.x
+  player.y = 16 * 10 + game.viewport.y
 end
 
 function love.draw ( )
@@ -196,9 +212,9 @@ function love.draw ( )
   love.graphics.push()
     love.graphics.scale (1.25, 1.25)
     love.graphics.setPointSize(2)
-    Level:draw (px, py)
+    Level:draw (game.viewport.x, game.viewport.y)
     -- TODO Level:mapCellCenter(col, row)
-    Player:draw(0, 0)
+    player:draw(0, 0)
     drawCursor ()
   love.graphics.pop()
 
