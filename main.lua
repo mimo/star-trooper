@@ -75,6 +75,15 @@ function Level:draw (x, y)
       end
   end
 end
+
+function Level:getMapCell (x, y)
+  return math.ceil (x / self.map.tilewidth), math.ceil (y / self.map.tileheight) - 1
+end
+
+function Level:getCellType (col, row)
+  local i = row * self.map.width + col
+  return self.map.layers[1].data[i]
+end
 ------------------------------------------------------
 Entity = {}
 Entity.name = "foo"
@@ -172,28 +181,26 @@ function Entity:move (dt, movement)
     shift (speed, self.target.orientation + math.pi / 2, true)
   end
 
-  -- TODO
-  --col, row = Level:map()
- --local tileType = Game.map.grid[row][col]
-  local tileType = 8
+  local col, row = Level:getMapCell(x, y)
+  local tileType = Level:getCellType (col, row)
 
-  if tileType == 8 or tileType == 7 then
+  if tileType == 8 or tileType == 7 or tileType == 21 then
     self.x = topositive (x)
     self.y = topositive (y)
   end
 
-
 end
 
 function Entity:draw(offsetx, offsety)
+  local scale = 1.5
   local animation = self.spritesheet[self.currentAnim]
   local sprite = animation[self.currentFrame]
   local x = self.x + offsetx
   local y = self.y + offsety
   local ox = self.spriteSize.x / 2
-  local oy = self.spriteSize.y / 2
+  local oy = self.spriteSize.y - 1
 
-  love.graphics.draw (self.texture, sprite, x, y, 0, 1.6, 1.6, ox, oy)
+  love.graphics.draw (self.texture, sprite, x, y, 0, scale, scale, ox, oy)
 end
 ------------------------------------------------------
 -- GLOBAL OBJECTS
@@ -269,7 +276,6 @@ end
 
 function love.load ( )
   love.window.setTitle ("Star Trooper - GC GameJam #21")
-  love.mouse.setVisible(false)
   love.mouse.setRelativeMode(true)
   love.graphics.setDefaultFilter("nearest")
 
@@ -288,10 +294,10 @@ function love.load ( )
   player:setupAnimation ('up',    4, 3)
   player:setupAnimation ('down',  4, 4)
 
-  player.x = 16 * 10 + game.viewport.x
-  player.y = 16 * 10 + game.viewport.y
-  player.target.x = player.x + 32
-  player.target.y = player.y
+  player.x = 16 * 18
+  player.y = 16 * 17 - 8
+  player.target.x = player.x
+  player.target.y = player.y - 50
 end
 
 function love.draw ( )
