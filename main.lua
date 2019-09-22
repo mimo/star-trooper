@@ -200,7 +200,8 @@ end
 ----
 local game = {}
 game.viewport = {x = 0, y = 0, width = 0, height = 0 }
-game.titleHeight = 75
+game.titleHeight = 32
+game.showmap = false
 local player = Entity:new("alexis")
 -- angles at which entity orientation change
 player.angles = {
@@ -272,11 +273,14 @@ function love.load ( )
   love.mouse.setRelativeMode(true)
   love.graphics.setDefaultFilter("nearest")
 
+  game.titleFont = love.graphics.newFont("res/Fox Cavalier.otf", 24)
+  game.infoFont = love.graphics.newFont("res/Fox Cavalier.otf", 13)
+
   Level:load ("res/level1")
-  local marginx = (love.graphics:getWidth() - Level.viewSize.w) / 2
-  local marginy = (love.graphics:getHeight() - game.titleHeight - Level.viewSize.h ) / 2
+  local marginx = 0 --(love.graphics:getWidth() - Level.viewSize.w * 1.25) / 2
+  local marginy = 0 -- game.titleHeight
   game.viewport.x = math.floor(marginx)
-  game.viewport.y = math.floor(marginy + game.titleHeight)
+  game.viewport.y = math.floor(marginy)
 
   player:loadSprites("res/player.png", 16, 16)
   player:setupAnimation ('left',  4, 2)
@@ -293,23 +297,39 @@ end
 function love.draw ( )
 
   love.graphics.push()
-    love.graphics.scale (1.25, 1.25)
+    love.graphics.scale (2, 2)
     Level:draw (game.viewport.x, game.viewport.y)
     -- TODO Level:mapCellCenter(col, row)
     player:draw(0, 0)
     drawCursor ()
   love.graphics.pop()
 
-  love.graphics.setColor (0.1, 0.2, 1, 1)
-  love.graphics.print ("Welcome StarTrooper ...", 10, 10)
-  love.graphics.setColor (1, 1, 1, 1 )
+  love.graphics.setColor (0.21, 0.21, 0.21, 0.85)
+  love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), 32)
+  love.graphics.setColor (1, 1, 1, 1)
 
-  local yellow = { 0.9, 0.8, 0.6, 1 }
+  love.graphics.setColor (0.1, 0.2, 1, 1)
+  love.graphics.setFont(game.titleFont)
+  love.graphics.print ("Welcome StarTrooper ...", 4, 4)
+  love.graphics.setColor (1, 1, 1, 1)
+
+  local yellow = { 1.0, 0.9, 0.7, 1 }
   local red = { 0.9, 0.1, 0.1, 1 }
   local coloredText = {yellow, "/!\\ ", red, "For emergency press 'Escape'", yellow, " /!\\"}
-  love.graphics.print (coloredText, 10, 50)
+  love.graphics.setFont(game.infoFont)
+  love.graphics.print (coloredText, love.graphics.getWidth() - game.infoFont:getWidth("/!\\ For emergency press 'Escape' /!\\") - 18 , 2)
+  local mapMsg = "Press m to toggle map view."
+  love.graphics.print (mapMsg, love.graphics.getWidth() - game.infoFont:getWidth(mapMsg) - 50 , 17)
+
+  if game.showmap then
+    love.graphics.setColor (0.21, 0.21, 0.21, 0.85)
+    love.graphics.rectangle('fill', 50, 50, 400, 300)
+    love.graphics.setColor (1, 1, 1, 1)
+  end
 end
 
 function love.keypressed(key)
   if love.keyboard.isDown ('escape') then love.event.quit (0) end
+
+  if love.keyboard.isDown ('m') then game.showmap = not game.showmap end
 end
