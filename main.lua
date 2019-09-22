@@ -86,7 +86,9 @@ function Entity:new(name)
   instance.spritesheet = {}
   instance.spriteSize = {x = 0, y = 0}
   instance.texture = {}
-  instance.orientation = 0
+  instance.target = {x = 0, y = 0}
+  instance.target.orientation = 0
+  instance.target.distance = 0
   -- variables for animation
   instance.currentAnim = ''
   instance.frametime =  0
@@ -128,37 +130,47 @@ function Entity:update(dt)
   end
 end
 
-function Entity:move (movement)
-  local newposx = self.x 
-  local newposy = self.y
+function Entity:move (dt, movement)
+  local x = self.x
+  local y = self.y
+  local speed = 0
 
-  local dx, dy = 0, 0
-  local way = function ()
-    if self.orientation > 180 then return 1 else return -1 end
-  end
   local topositive = function (number)
     if number > 1 then return number else return 1 end
   end
 
-  local speed = 0
+  local shift = function (speed, theta, moveTarget)
+    local way = function ()
+      if theta > 180 then return 1 else return -1 end
+    end
 
-  if movement.forward ~= nil then speed = movement.forward
-  elseif movement.backward ~= nil then speed = movement.backward * -1
+    local sx = speed * math.cos(theta)
+    local sy = speed * math.sin(theta) * way()
+
+    sx = sx * dt * 10
+    sy = sy * dt * 10
+
+    x = x + sx
+    y = y + sy
+
+    if moveTarget then self:updateTarget (sx, sy) end
   end
 
-  dx = speed * math.cos(self.orientation)
-  dy = speed * math.sin(self.orientation) * way ()
+  if movement.forward ~= nil then
+    speed = movement.forward
+    shift (speed, self.target.orientation, false)
+  elseif movement.backward ~= nil then
+    speed = movement.backward * -1
+    shift (speed, self.target.orientation, false)
+  end
 
   if movement.left ~= nil then
-    speed = movement.left
-    local theta = self.orientation - math.pi / 2
+    speed = movement.left * -1
+    shift (speed, self.target.orientation - math.pi / 2, true)
   elseif movement.right ~= nil then
-    speed = movement.right
-    local theta = self.orientation + math.pi / 2
+    speed = movement.right * -1
+    shift (speed, self.target.orientation + math.pi / 2, true)
   end
-
-  newposx = newposx + dx
-  newposy = newposy + dy
 
   -- TODO
   --col, row = Level:map()
@@ -166,9 +178,11 @@ function Entity:move (movement)
   local tileType = 8
 
   if tileType == 8 or tileType == 7 then
-    self.x = topositive (newposx)
-    self.y = topositive (newposy)
+    self.x = topositive (x)
+    self.y = topositive (y)
   end
+
+
 end
 
 function Entity:draw(offsetx, offsety)
@@ -197,10 +211,10 @@ player.angles = {
 ------------------------------------------------------
 -- GLOBAL FUNCTIONS
 ----
-function drawCursor ()
+local function drawCursor ()
   local size = 4
-  local x = love.mouse.getX()
-  local y = love.mouse.getY()
+  local x = player.target.x
+  local y = player.target.y
   love.graphics.setColor(0.1, 0.3, 1)
   love.graphics.setLineWidth (2)
   love.graphics.line (x, y - size, x - size, y, x, y + size, x + size, y, x, y - size)
@@ -208,12 +222,22 @@ function drawCursor ()
   love.graphics.points (x, y)
 end
 
+function player:updateTarget (dx, dy)
+  self.target.x = self.target.x + dx
+  self.target.y = self.target.y + dy
+
+  local xm = self.target.x - self.x
+  local ym = -1 * (self.target.y - self.y)
+
+  self.target.distance = math.sqrt(xm^2 + ym^2)
+  local theta = math.acos (xm / self.target.distance)
+  if ym < 0 then theta = math.pi * 2 - theta end
+
+  self.target.orientation = theta
+end
+
 function player:changeAnimation ()
-  self.xm = love.mouse.getX() - self.x
-  self.ym = -1 *(love.mouse.getY() - self.y)
-  local xy = math.sqrt(self.xm^2 + self.ym^2)
-  local theta = math.acos (self.xm / xy)
-  if self.ym < 0 then theta = math.pi * 2 - theta end
+  local theta = self.target.orientation
 
   if theta < self.angles[1]
   or theta > self.angles[4] then self.currentAnim = 'right'
@@ -221,27 +245,31 @@ function player:changeAnimation ()
   elseif theta < self.angles[3] then self.currentAnim = 'left'
   else self.currentAnim = 'down'
   end
-  self.orientation = theta
 end
 ------------------------------------------------------
 -- LOVE CALLBACKS
 ----
 function love.update (dt)
-  if love.keyboard.isDown("down")   then player:move ({ backward =  1 })
-  elseif love.keyboard.isDown("up") then player:move ({ forward = 2 })
+  if love.keyboard.isDown("down")   then player:move (dt, { backward = 4 })
+  elseif love.keyboard.isDown("up") then player:move (dt, { forward = 8 })
   end
 
-  if     love.keyboard.isDown("right") then player:move ({ right =  1.5 })
-  elseif love.keyboard.isDown("left")  then player:move ({ left = 1.5 })
+  if     love.keyboard.isDown("right") then player:move (dt, { right =  6 })
+  elseif love.keyboard.isDown("left")  then player:move (dt, { left = 6 })
   end
 
   player:changeAnimation()
   player:update (dt)
 end
 
+function love.mousemoved( x, y, dx, dy, istouch )
+  player:updateTarget(dx, dy)
+end
+
 function love.load ( )
   love.window.setTitle ("Star Trooper - GC GameJam #21")
   love.mouse.setVisible(false)
+  love.mouse.setRelativeMode(true)
   love.graphics.setDefaultFilter("nearest")
 
   Level:load ("res/level1")
@@ -258,6 +286,8 @@ function love.load ( )
 
   player.x = 16 * 10 + game.viewport.x
   player.y = 16 * 10 + game.viewport.y
+  player.target.x = player.x + 32
+  player.target.y = player.y
 end
 
 function love.draw ( )
