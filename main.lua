@@ -1,5 +1,6 @@
 ------------------------------------------------------
 local Level = {}
+Level.edges = {}
 
 function Level:addTileset (pathStr, idStr, resX, resY)
   local texture = love.graphics.newImage(pathStr)
@@ -46,6 +47,16 @@ function Level:load (pathStr)
 
   self.viewSize.w = self.map.width * self.map.tilewidth
   self.viewSize.h = self.map.height * self.map.tileheight
+
+  local  wallLayer = self.map.layers[2]
+  for i, val in ipairs(wallLayer.data) do
+    local r = math.ceil(i / self.map.width)
+    local c = self.map.width + i - (r * self.map.width)
+    print ("r = "..r.." , c = "..c)
+    if val  == 6 or val  == 4 or val == 20 then
+      table.insert(self.edges, {r, c})
+end
+  end
 end
 
 function Level:draw (x, y)
@@ -329,7 +340,12 @@ function love.draw ( )
 
   if game.showmap then
     love.graphics.setColor (0.21, 0.21, 0.21, 0.85)
-    love.graphics.rectangle('fill', 50, 50, 400, 300)
+    love.graphics.rectangle('fill', 50, 50, 4 + Level.map.width*10, 4 + 4 + Level.map.height*10)
+
+    love.graphics.setColor (0, 1, 0, 1)
+    for i, val in ipairs(Level.edges) do
+      love.graphics.points (51 + val[1]*10, 51 + val[2]*10)
+    end
     love.graphics.setColor (1, 1, 1, 1)
   end
 end
