@@ -1,6 +1,7 @@
 ------------------------------------------------------
 local Level = {}
 Level.edges = {}
+Level.lines = {}
 
 function Level:addTileset (pathStr, idStr, resX, resY)
   local texture = love.graphics.newImage(pathStr)
@@ -48,15 +49,73 @@ function Level:load (pathStr)
   self.viewSize.w = self.map.width * self.map.tilewidth
   self.viewSize.h = self.map.height * self.map.tileheight
 
-  local  wallLayer = self.map.layers[2]
-  for i, val in ipairs(wallLayer.data) do
-    local r = math.ceil(i / self.map.width)
-    local c = self.map.width + i - (r * self.map.width)
-    print ("r = "..r.." , c = "..c)
-    if val  == 6 or val  == 4 or val == 20 then
-      table.insert(self.edges, {r, c})
-end
+  local upLeftCorner = 25
+  local upRightCorner = 26
+  local downLeftCorner = 27
+  local downRightCorner = 28
+
+  local shiftLeft = -1
+  local shiftRight = 1
+  local shiftUp = -self.map.width
+  local shiftDown = self.map.width
+
+  local  wallLayer = self.map.layers[3]
+  local index = 0
+  local row, col = 1, 1
+  local computeRowCol = function ()
+    row = math.ceil(index / self.map.width)
+    col = self.map.width + index - (row * self.map.width)
   end
+
+  local count = self.map.width * self.map.height
+  local countCall = 0
+
+  lookEdges = function (shift)
+
+    if index > count then return end
+
+    index = index + shift
+    local tileId = wallLayer.data[index]
+
+    if tileId ~= 0 then
+      computeRowCol ()
+      if #self.edges >= 1 then
+        table.insert (self.lines, {self.edges[#self.edges][1], self.edges[#self.edges][2], col, row} )
+      end
+
+      if #self.edges > 3 then
+        if col == self.edges[1][1] and row == self.edges[1][2] then return end
+      end
+
+      table.insert (self.edges, {col, row})
+
+      if tileId == upLeftCorner    then
+        if shift == shiftRight or shift == shiftUp
+        then shift = shiftRight
+        else shift = shiftDown
+        end
+      elseif tileId == upRightCorner   then
+         if shift == shiftRight
+         then shift = shiftDown
+         else shift = shiftLeft
+         end
+      elseif tileId == downRightCorner then
+        if shift == shiftDown
+        then shift = shiftLeft
+        else shift = shiftUp
+        end
+      elseif tileId == downLeftCorner  then
+        if shift == shiftLeft
+        then shift = shiftUp
+        else shift = shiftRight
+        end
+      end
+end
+
+    lookEdges (shift)
+  end
+
+  lookEdges (1)
 end
 
 function Level:draw (x, y)
@@ -342,9 +401,14 @@ function love.draw ( )
     love.graphics.setColor (0.21, 0.21, 0.21, 0.85)
     love.graphics.rectangle('fill', 50, 50, 4 + Level.map.width*10, 4 + 4 + Level.map.height*10)
 
+    love.graphics.setColor (0, 0, 1, 1)
+    for i, val in ipairs(Level.lines) do
+      love.graphics.line (51 + val[1] * 10, 51 + val[2] * 10 , 51 + val[3] * 10, 51 + val[4] * 10)
+    end
+
     love.graphics.setColor (0, 1, 0, 1)
     for i, val in ipairs(Level.edges) do
-      love.graphics.points (51 + val[1]*10, 51 + val[2]*10)
+      love.graphics.points (51 + val[1] * 10, 51 + val[2] * 10)
     end
     love.graphics.setColor (1, 1, 1, 1)
   end
