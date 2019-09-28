@@ -1,3 +1,12 @@
+local topositive = function (number)
+  if number > 1 then return number else return 1 end
+end
+local constrain = function (number, min, max)
+  if number < min then return min
+  elseif number > max then return max
+  else return number
+  end
+end
 ------------------------------------------------------
 local Level = {}
 Level.edges = {}
@@ -36,7 +45,6 @@ end
 function Level:load (pathStr)
   self.tileSets = {}
   self.map = {}
-  self.viewSize = {x = 0, y = 0}
 
   print ("Loading tilesets used by '"..pathStr.."'...")
   self.map =  require(pathStr)
@@ -45,9 +53,6 @@ function Level:load (pathStr)
     local imagePath = "res/"..tileset.image
     Level:addTileset (imagePath, tileset.name, tileset.tilewidth, tileset.tileheight)
   end
-
-  self.viewSize.w = self.map.width * self.map.tilewidth
-  self.viewSize.h = self.map.height * self.map.tileheight
 
   local upLeftCorner = 25
   local upRightCorner = 26
@@ -118,7 +123,7 @@ end
   lookEdges (1)
 end
 
-function Level:draw (x, y)
+function Level:draw (view)
   local col, row
   local ox, oy
 
@@ -133,7 +138,7 @@ function Level:draw (x, y)
           ox = (col-1) * self.map.tilewidth
           oy = (row-1) * self.map.tileheight
           -- TODO : create a  tile drawing function
-          love.graphics.draw (self.tileSets[1].data, texQuad, ox + x, oy + y)
+          love.graphics.draw (self.tileSets[1].data, texQuad, ox - view.x, oy - view.y)
         end
         -- go through the row  or ...
         if col < layer.width then
@@ -214,10 +219,6 @@ function Entity:move (dt, movement)
   local y = self.y
   local speed = 0
 
-  local topositive = function (number)
-    if number > 1 then return number else return 1 end
-  end
-
   local shift = function (speed, theta, moveTarget)
     local way = function ()
       if theta > 180 then return 1 else return -1 end
@@ -261,12 +262,10 @@ function Entity:move (dt, movement)
 
 end
 
-function Entity:draw(offsetx, offsety)
+function Entity:draw(x, y)
   local scale = 1.5
   local animation = self.spritesheet[self.currentAnim]
   local sprite = animation[self.currentFrame]
-  local x = self.x + offsetx
-  local y = self.y + offsety
   local ox = self.spriteSize.x / 2
   local oy = self.spriteSize.y - 1
 
@@ -276,9 +275,11 @@ end
 -- GLOBAL OBJECTS
 ----
 local game = {}
-game.viewport = {x = 0, y = 0, width = 0, height = 0 }
+game.view = {x = 0, y = 0, width = 0, height = 0, scalex = 1, scaley = 1 }
 game.titleHeight = 32
 game.showmap = false
+game.showdebug = false
+game.debug = { messages = {} , lines = {} }
 local player = Entity:new("alexis")
 -- angles at which entity orientation change
 player.angles = {
@@ -289,10 +290,10 @@ player.angles = {
 ------------------------------------------------------
 -- GLOBAL FUNCTIONS
 ----
-local function drawCursor ()
+local function drawCursor (view)
   local size = 4
-  local x = player.target.x
-  local y = player.target.y
+  local x = player.target.x - view.x
+  local y = player.target.y - view.y
   love.graphics.setColor(0.1, 0.3, 1)
   love.graphics.setLineWidth (2)
   love.graphics.line (x, y - size, x - size, y, x, y + size, x + size, y, x, y - size)
@@ -324,20 +325,47 @@ function player:changeAnimation ()
   else self.currentAnim = 'down'
   end
 end
+function game:mapToScreen (x, y)
+  return x - self.view.x, y - self.view.y
+end
+function game:updateView()
+  self.px, self.py = game:mapToScreen (player.x, player.y)
+  local shift = {x = 0, y = 0}
+
+  if self.px < self.view.marginLeft then
+    shift.x = self.px - self.view.marginLeft
+  elseif self.px > self.view.marginRight then
+    shift.x = self.px - self.view.marginRight
+  end
+
+  if self.py < self.view.marginTop then
+    shift.y = self.py - self.view.marginTop
+  elseif self.py > self.view.marginBottom then 
+    shift.y = self.py - self.view.marginBottom
+  end
+
+  local lvlWidth = Level.map.width * Level.map.tilewidth
+  local lvlHeight = Level.map.height * Level.map.tileheight
+  self.view.x = constrain (self.view.x + shift.x, 0, lvlWidth - self.view.width)
+  self.view.y = constrain (self.view.y + shift.y, 0, lvlHeight - self.view.height)
+  self.view.firstCol, self.view.firstRow = Level:getMapCell (self.view.x, self.view.y)
+end
 ------------------------------------------------------
 -- LOVE CALLBACKS
 ----
 function love.update (dt)
-  if love.keyboard.isDown("down")   then player:move (dt, { backward = 4 })
-  elseif love.keyboard.isDown("up") then player:move (dt, { forward = 8 })
+  if love.keyboard.isDown("s")   then player:move (dt, { backward = 4 })
+  elseif love.keyboard.isDown("z") then player:move (dt, { forward = 8 })
   end
 
-  if     love.keyboard.isDown("right") then player:move (dt, { right =  6 })
-  elseif love.keyboard.isDown("left")  then player:move (dt, { left = 6 })
+  if     love.keyboard.isDown("d") then player:move (dt, { right =  6 })
+  elseif love.keyboard.isDown("q")  then player:move (dt, { left = 6 })
   end
 
   player:changeAnimation()
   player:update (dt)
+
+  game:updateView()
 end
 
 function love.mousemoved( x, y, dx, dy, istouch )
@@ -368,14 +396,30 @@ function love.load ( )
   player.y = 16 * 17 - 8
   player.target.x = player.x
   player.target.y = player.y - 50
+
+  game.view.scalex = 2
+  game.view.scaley = 2
+  game.view.width = love.graphics.getWidth() / game.view.scalex
+  game.view.height = love.graphics.getHeight() / game.view.scaley
+  game.view.x = math.floor(player.x) - game.view.width / 2
+  game.view.y = math.floor(player.y) - game.view.height / 2
+  local scrollBorderW = math.ceil (game.view.width / 3)
+  local scrollBorderH = math.ceil (game.view.height / 3)
+  game.view.marginLeft = scrollBorderW
+  game.view.marginRight = game.view.width - scrollBorderW
+  game.view.marginTop = scrollBorderH
+  game.view.marginBottom = game.view.height - scrollBorderH
 end
 
 function love.draw ( )
 
   love.graphics.push()
-    love.graphics.scale (2, 2)
-    Level:draw (game.viewport.x, game.viewport.y)
+    love.graphics.scale (game.view.scalex, game.view.scaley)
+    Level:draw (game.view)
     -- TODO Level:mapCellCenter(col, row)
+    local x, y = game:mapToScreen (player.x, player.y)
+    player:draw(x, y)
+    drawCursor (game.view)
     player:draw(0, 0)
     drawCursor ()
   love.graphics.pop()
