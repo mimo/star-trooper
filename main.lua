@@ -226,6 +226,12 @@ function Entity:move (dt, movement)
     sx = sx * dt * 10
     sy = sy * dt * 10
 
+    -- strafe hack, reverse when player is downward
+    if moveTarget and self.target.orientation > math.pi then
+        sx = sx * -1
+        sy = sy * -1
+    end
+
     x = x + sx
     y = y + sy
 
@@ -277,7 +283,7 @@ game.showmap = false
 game.showdebug = false
 game.debug = { messages = {} , lines = {} }
 local player = Entity:new("alexis")
--- angles at which entity orientation change
+-- angles at which entity's sprite anim change
 player.angles = {
   math.pi / 4,
   math.pi * 3/4,
@@ -386,8 +392,7 @@ function love.load ( )
 
   player.x = 16 * 18
   player.y = 16 * 17 - 8
-  player.target.x = player.x
-  player.target.y = player.y - 50
+  player:updateTarget(player.x, player.y - 50)
 
   game.view.scalex = 2
   game.view.scaley = 2
