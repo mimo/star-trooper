@@ -220,12 +220,8 @@ function Entity:move (dt, movement)
   local speed = 0
 
   local shift = function (speed, theta, moveTarget)
-    local way = function ()
-      if theta > 180 then return 1 else return -1 end
-    end
-
     local sx = speed * math.cos(theta)
-    local sy = speed * math.sin(theta) * way()
+    local sy = -speed * math.sin(theta)
 
     sx = sx * dt * 10
     sy = sy * dt * 10
@@ -381,10 +377,6 @@ function love.load ( )
   game.infoFont = love.graphics.newFont("res/Fox Cavalier.otf", 13)
 
   Level:load ("res/level1")
-  local marginx = 0 --(love.graphics:getWidth() - Level.viewSize.w * 1.25) / 2
-  local marginy = 0 -- game.titleHeight
-  game.viewport.x = math.floor(marginx)
-  game.viewport.y = math.floor(marginy)
 
   player:loadSprites("res/player.png", 16, 16)
   player:setupAnimation ('left',  4, 2)
