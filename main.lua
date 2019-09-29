@@ -8,9 +8,16 @@ local constrain = function (number, min, max)
   end
 end
 ------------------------------------------------------
+local game = {}
+game.view = {x = 0, y = 0, width = 0, height = 0, scalex = 1, scaley = 1 }
+game.titleHeight = 32
+game.showmap = false
+game.showdebug = false
+game.debug = { messages = {} , lines = {} }
+
+
 local Level = {}
-Level.edges = {}
-Level.lines = {}
+Level.rooms = {}
 
 function Level:addTileset (pathStr, idStr, resX, resY)
   local texture = love.graphics.newImage(pathStr)
@@ -42,6 +49,12 @@ function Level:addTileset (pathStr, idStr, resX, resY)
   print ("- '"..set.id.."' loaded")
 end
 
+function Level:computeRowCol (index)
+  local row = math.ceil(index / self.map.width)
+  local col = self.map.width + index - (row * self.map.width)
+  return col, row
+end
+
 function Level:load (pathStr)
   self.tileSets = {}
   self.map = {}
@@ -64,7 +77,9 @@ function Level:load (pathStr)
   local shiftUp = -self.map.width
   local shiftDown = self.map.width
 
-  local  wallLayer = self.map.layers[3]
+  local roomIndex = 3
+  local currentRoomLayer = {}
+
   local index = 0
   local row, col = 1, 1
   local computeRowCol = function ()
@@ -74,25 +89,30 @@ function Level:load (pathStr)
 
   local count = self.map.width * self.map.height
   local countCall = 0
+  local edges = {}
+  local lines = {}
 
   lookEdges = function (shift)
 
     if index > count then return end
 
     index = index + shift
-    local tileId = wallLayer.data[index]
+    local tileId = currentRoomLayer.data[index]
 
     if tileId ~= 0 then
       computeRowCol ()
-      if #self.edges >= 1 then
-        table.insert (self.lines, {self.edges[#self.edges][1], self.edges[#self.edges][2], col, row} )
+      if #edges >= 1 then
+        table.insert (lines, {edges[#edges][1], edges[#edges][2], col, row} )
       end
 
-      if #self.edges > 3 then
-        if col == self.edges[1][1] and row == self.edges[1][2] then return end
+      if #edges > 3 then
+        if col == edges[1][1] and row == edges[1][2] then
+          table.insert(self.rooms, {e = edges, l = lines})
+          return
+        end
       end
 
-      table.insert (self.edges, {col, row})
+      table.insert (edges, {col, row})
 
       if tileId == upLeftCorner    then
         if shift == shiftRight or shift == shiftUp
@@ -115,12 +135,20 @@ function Level:load (pathStr)
         else shift = shiftRight
         end
       end
-end
+    end
 
     lookEdges (shift)
   end
 
-  lookEdges (1)
+  roomIndex = 3
+  repeat
+    currentRoomLayer = self.map.layers[roomIndex]
+    index = 0
+    edges = {}
+    lines = {}
+    lookEdges (1)
+    roomIndex = roomIndex + 1
+  until roomIndex > #self.map.layers
 end
 
 function Level:draw (view)
@@ -130,16 +158,16 @@ function Level:draw (view)
   local tileset = self.tileSets[1]
 
   for i, layer in ipairs (self.map.layers) do
-      col, row = 1, 1
-      for j, val in ipairs(layer.data) do
-        local texQuad = self.tileSets[1].textures[val]
-        if texQuad ~= nil then
-          -- TODO : handle offset from Tiled layers
-          ox = (col-1) * self.map.tilewidth
-          oy = (row-1) * self.map.tileheight
-          -- TODO : create a  tile drawing function
-          love.graphics.draw (self.tileSets[1].data, texQuad, ox - view.x, oy - view.y)
-        end
+    col, row = 1, 1
+    for j, val in ipairs(layer.data) do
+      local texQuad = self.tileSets[1].textures[val]
+      if texQuad ~= nil then
+        -- TODO : handle offset from Tiled layers
+        ox = (col-1) * self.map.tilewidth
+        oy = (row-1) * self.map.tileheight
+        -- TODO : create a  tile drawing function
+        love.graphics.draw (self.tileSets[1].data, texQuad, ox - view.x, oy - view.y)
+      end
         -- go through the row  or ...
         if col < layer.width then
           col = col + 1
@@ -276,13 +304,9 @@ end
 ------------------------------------------------------
 -- GLOBAL OBJECTS
 ----
-local game = {}
-game.view = {x = 0, y = 0, width = 0, height = 0, scalex = 1, scaley = 1 }
-game.titleHeight = 32
-game.showmap = false
-game.showdebug = false
-game.debug = { messages = {} , lines = {} }
+
 local player = Entity:new("alexis")
+local bandit = Entity:new("croman")
 -- angles at which entity's sprite anim change
 player.angles = {
   math.pi / 4,
@@ -327,6 +351,19 @@ function player:changeAnimation ()
   else self.currentAnim = 'down'
   end
 end
+
+function game:debugLine (x1, y1,  x2, y2)
+  local l = { p1 ={}, p2= {}}
+  l.p1.x = x1
+  l.p1.y = y1
+  l.p2.x = x2
+  l.p2.y = y2
+
+  table.insert (self.debug.lines, l)
+end
+function game:debugMessage (str)
+  table.insert (self.debug.messages, str)
+end
 function game:mapToScreen (x, y)
   return x - self.view.x, y - self.view.y
 end
@@ -356,12 +393,15 @@ end
 -- LOVE CALLBACKS
 ----
 function love.update (dt)
-  if love.keyboard.isDown("s")   then player:move (dt, { backward = 4 })
-  elseif love.keyboard.isDown("z") then player:move (dt, { forward = 8 })
+  game.debug.lines = {}
+  game.debug.messages = {}
+
+  if love.keyboard.isDown("s") or love.keyboard.isDown("down")  then player:move (dt, { backward = 4 })
+  elseif love.keyboard.isDown("z") or love.keyboard.isDown("up") then player:move (dt, { forward = 8 })
   end
 
-  if     love.keyboard.isDown("d") then player:move (dt, { right =  6 })
-  elseif love.keyboard.isDown("q")  then player:move (dt, { left = 6 })
+  if     love.keyboard.isDown("d") or love.keyboard.isDown("right") then player:move (dt, { right =  6 })
+  elseif love.keyboard.isDown("q") or love.keyboard.isDown("left") then player:move (dt, { left = 6 })
   end
 
   player:changeAnimation()
@@ -380,7 +420,7 @@ function love.load ( )
   love.graphics.setDefaultFilter("nearest")
 
   game.titleFont = love.graphics.newFont("res/Fox Cavalier.otf", 24)
-  game.infoFont = love.graphics.newFont("res/Fox Cavalier.otf", 13)
+  game.infoFont = love.graphics.newFont("res/Fox Cavalier.otf", 12)
 
   Level:load ("res/level1")
 
@@ -406,6 +446,8 @@ function love.load ( )
   game.view.marginRight = game.view.width - scrollBorderW
   game.view.marginTop = scrollBorderH
   game.view.marginBottom = game.view.height - scrollBorderH
+  game.view.firstCol, game.view.firstRow = Level:getMapCell (game.view.x, game.view.y)
+  print ("firstcol "..game.view.firstCol.."x"..game.view.firstRow.." ; coord : "..game.view.x.." x "..game.view.y)
 end
 
 function love.draw ( )
@@ -417,40 +459,64 @@ function love.draw ( )
     local x, y = game:mapToScreen (player.x, player.y)
     player:draw(x, y)
     drawCursor (game.view)
-    player:draw(0, 0)
-    drawCursor ()
   love.graphics.pop()
 
-  love.graphics.setColor (0.21, 0.21, 0.21, 0.85)
-  love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), 32)
-  love.graphics.setColor (1, 1, 1, 1)
+  if game.showdebug then
+    love.graphics.push()
+    love.graphics.scale (game.view.scalex, game.view.scaley)
 
-  love.graphics.setColor (0.1, 0.2, 1, 1)
-  love.graphics.setFont(game.titleFont)
-  love.graphics.print ("Welcome StarTrooper ...", 4, 4)
-  love.graphics.setColor (1, 1, 1, 1)
+    love.graphics.setColor (0.4, 0.4, 1, 1)
+    for i, l in ipairs (game.debug.lines) do
+      love.graphics.line (l.p1.x, l.p1.y, l.p2.x, l.p2.y)
+    end
 
-  local yellow = { 1.0, 0.9, 0.7, 1 }
-  local red = { 0.9, 0.1, 0.1, 1 }
-  local coloredText = {yellow, "/!\\ ", red, "For emergency press 'Escape'", yellow, " /!\\"}
-  love.graphics.setFont(game.infoFont)
-  love.graphics.print (coloredText, love.graphics.getWidth() - game.infoFont:getWidth("/!\\ For emergency press 'Escape' /!\\") - 18 , 2)
-  local mapMsg = "Press m to toggle map view."
-  love.graphics.print (mapMsg, love.graphics.getWidth() - game.infoFont:getWidth(mapMsg) - 50 , 17)
+    love.graphics.pop()
+
+    love.graphics.setColor (1, 1, 1, 0.85)
+    love.graphics.rectangle('fill', 10, 10, love.graphics.getWidth() * 0.4, love.graphics.getHeight() *0.4)
+    love.graphics.setColor (0, 0, 0, 1)
+    love.graphics.setFont(game.infoFont)
+    for i, m in ipairs (game.debug.messages) do
+      love.graphics.print (m, 12, 12 + i * 15)
+    end
+    love.graphics.setColor (1, 1, 1, 1)
+
+  else
+    love.graphics.setColor (0.21, 0.21, 0.21, 0.85)
+    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), 32)
+    love.graphics.setColor (1, 1, 1, 1)
+
+    love.graphics.setColor (0.1, 0.2, 1, 1)
+    love.graphics.setFont(game.titleFont)
+    love.graphics.print ("Welcome StarTrooper ...", 4, 4)
+    love.graphics.setColor (1, 1, 1, 1)
+
+    local yellow = { 1.0, 0.9, 0.7, 1 }
+    local red = { 0.9, 0.1, 0.1, 1 }
+    local coloredText = {yellow, "/!\\ ", red, "For emergency press 'Escape'", yellow, " /!\\"}
+    love.graphics.setFont(game.infoFont)
+    love.graphics.print (coloredText, love.graphics.getWidth() - game.infoFont:getWidth("/!\\ For emergency press 'Escape' /!\\") - 18 , 2)
+    local mapMsg = "Press m to toggle map view."
+    love.graphics.print (mapMsg, love.graphics.getWidth() - game.infoFont:getWidth(mapMsg) - 50 , 17)
+  end
 
   if game.showmap then
+    scale = (game.view.height - 50) / Level.map.height
+
     love.graphics.setColor (0.21, 0.21, 0.21, 0.85)
-    love.graphics.rectangle('fill', 50, 50, 4 + Level.map.width*10, 4 + 4 + Level.map.height*10)
+    love.graphics.rectangle('fill', 50, 50, - 4 + Level.map.width * scale, 4 + Level.map.height*scale)
 
-    love.graphics.setColor (0, 0, 1, 1)
-    for i, val in ipairs(Level.lines) do
-      love.graphics.line (51 + val[1] * 10, 51 + val[2] * 10 , 51 + val[3] * 10, 51 + val[4] * 10)
+    for i, room in ipairs(Level.rooms) do
+      love.graphics.setColor (0, 0, 1, 1)
+      for i, val in ipairs(room.l) do
+        love.graphics.line (51 + (val[1]-0.0) * scale, 51 + (val[2]-0.0) * scale, 51 + (val[3]-0.0) * scale, 51 + (val[4]-0.0) * scale)
+      end
     end
 
-    love.graphics.setColor (0, 1, 0, 1)
-    for i, val in ipairs(Level.edges) do
-      love.graphics.points (51 + val[1] * 10, 51 + val[2] * 10)
-    end
+    local px, py  = Level:getMapCell (player.x, player.y)
+
+    love.graphics.setColor (1, 0, 0, 1)
+    love.graphics.points (51 + (px + 0.5) * scale, 51 + (py + 0.5) * scale)
     love.graphics.setColor (1, 1, 1, 1)
   end
 end
@@ -459,4 +525,6 @@ function love.keypressed(key)
   if love.keyboard.isDown ('escape') then love.event.quit (0) end
 
   if love.keyboard.isDown ('m') then game.showmap = not game.showmap end
+
+  if love.keyboard.isDown (')') then game.showdebug = not game.showdebug end
 end
