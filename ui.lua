@@ -4,6 +4,14 @@ UI = {
   red = { 0.9, 0.1, 0.1, 1 }
 }
 
+function UI.drawCursor (x, y, size)
+  love.graphics.setColor(0.1, 0.3, 1)
+  love.graphics.setLineWidth (2)
+  love.graphics.line (x, y - size, x - size, y, x, y + size, x + size, y, x, y - size)
+  love.graphics.setPointSize(2)
+  love.graphics.points (x, y)
+end
+
 function UI.initialize ()
     UI.titleFont = love.graphics.newFont("res/Fox Cavalier.otf", 24)
     UI.infoFont = love.graphics.newFont("res/Fox Cavalier.otf", 12)
