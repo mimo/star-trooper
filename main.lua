@@ -379,7 +379,7 @@ function game:updateView()
 
   if self.py < self.view.marginTop then
     shift.y = self.py - self.view.marginTop
-  elseif self.py > self.view.marginBottom then 
+  elseif self.py > self.view.marginBottom then
     shift.y = self.py - self.view.marginBottom
   end
 
@@ -419,8 +419,7 @@ function love.load ( )
   love.mouse.setRelativeMode(true)
   love.graphics.setDefaultFilter("nearest")
 
-  game.titleFont = love.graphics.newFont("res/Fox Cavalier.otf", 24)
-  game.infoFont = love.graphics.newFont("res/Fox Cavalier.otf", 12)
+  UI.initialize ()
 
   Level:load ("res/level1")
 
@@ -475,29 +474,16 @@ function love.draw ( )
     love.graphics.setColor (1, 1, 1, 0.85)
     love.graphics.rectangle('fill', 10, 10, love.graphics.getWidth() * 0.4, love.graphics.getHeight() *0.4)
     love.graphics.setColor (0, 0, 0, 1)
-    love.graphics.setFont(game.infoFont)
+    love.graphics.setFont(UI.infoFont)
     for i, m in ipairs (game.debug.messages) do
       love.graphics.print (m, 12, 12 + i * 15)
     end
     love.graphics.setColor (1, 1, 1, 1)
 
   else
-    love.graphics.setColor (0.21, 0.21, 0.21, 0.85)
-    love.graphics.rectangle('fill', 0, 0, love.graphics.getWidth(), 32)
-    love.graphics.setColor (1, 1, 1, 1)
+    UI.showTitle ()
 
-    love.graphics.setColor (0.1, 0.2, 1, 1)
-    love.graphics.setFont(game.titleFont)
-    love.graphics.print ("Welcome StarTrooper ...", 4, 4)
-    love.graphics.setColor (1, 1, 1, 1)
 
-    local yellow = { 1.0, 0.9, 0.7, 1 }
-    local red = { 0.9, 0.1, 0.1, 1 }
-    local coloredText = {yellow, "/!\\ ", red, "For emergency press 'Escape'", yellow, " /!\\"}
-    love.graphics.setFont(game.infoFont)
-    love.graphics.print (coloredText, love.graphics.getWidth() - game.infoFont:getWidth("/!\\ For emergency press 'Escape' /!\\") - 18 , 2)
-    local mapMsg = "Press m to toggle map view."
-    love.graphics.print (mapMsg, love.graphics.getWidth() - game.infoFont:getWidth(mapMsg) - 50 , 17)
   end
 
   if game.showmap then
