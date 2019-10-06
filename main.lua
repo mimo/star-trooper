@@ -93,13 +93,21 @@ function love.update (dt)
   game.debug.lines = {}
   game.debug.messages = {}
 
-  if love.keyboard.isDown("s") or love.keyboard.isDown("down")  then player:move (dt, { backward = 4 })
-  elseif love.keyboard.isDown("z") or love.keyboard.isDown("up") then player:move (dt, { forward = 8 })
+  local direction = {
+    up = false,
+    down = false,
+    left = false,
+    right = false
+  }
+  if     love.keyboard.isDown("s") or love.keyboard.isDown("down") then direction.down = true
+  elseif love.keyboard.isDown("z") or love.keyboard.isDown("up") then direction.up = true
   end
 
-  if     love.keyboard.isDown("d") or love.keyboard.isDown("right") then player:move (dt, { right =  6 })
-  elseif love.keyboard.isDown("q") or love.keyboard.isDown("left") then player:move (dt, { left = 6 })
+  if     love.keyboard.isDown("d") or love.keyboard.isDown("right") then direction.right = true
+  elseif love.keyboard.isDown("q") or love.keyboard.isDown("left") then direction.left = true
   end
+
+  player:move (dt, direction)
 
   player:changeAnimation()
   player:update (dt)

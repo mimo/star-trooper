@@ -59,42 +59,50 @@ end
 function Entity:move (dt, movement)
   local x = self.x
   local y = self.y
-  local speed = 0
+  local speed = 1
+  local sx = 0
+  local sy = 0
 
-  local shift = function (speed, theta, moveTarget)
-    local sx = speed * math.cos(theta)
-    local sy = -speed * math.sin(theta)
+  local shift = function ()
+    x = x + sx
+    y = y + sy
+  end
+
+  local move = function (speed, theta, moveTarget)
+    sx = speed * math.cos(theta)
+    sy = -speed * math.sin(theta)
 
     sx = sx * dt * 10
     sy = sy * dt * 10
+  end
 
-    -- strafe hack, reverse when player is downward
-    if moveTarget and self.target.orientation > math.pi then
-        sx = sx * -1
-        sy = sy * -1
+  -- reverse strafe when player is downward
+  local strafeHack = function()
+    if self.target.orientation > math.pi then
+      sx = sx * -1
+      sy = sy * -1
     end
-
-    x = x + sx
-    y = y + sy
-
-    if moveTarget then self:updateTarget (sx, sy) end
   end
 
-  if movement.forward ~= nil then
-    speed = movement.forward
-    shift (speed, self.target.orientation, false)
-  elseif movement.backward ~= nil then
-    speed = movement.backward * -1
-    shift (speed, self.target.orientation, false)
+  if movement.up then
+    --sy = dt * -10 * speed
+    move (7, self.target.orientation, false)
+    shift()
+  elseif movement.down then
+    --sy = dt * 10 * speed
+    move (-2.5, self.target.orientation, false)
+    shift()
   end
 
-  if movement.left ~= nil then
-    speed = movement.left * -1
-    shift (speed, self.target.orientation - math.pi / 2, true)
-  elseif movement.right ~= nil then
-    speed = movement.right * -1
-    shift (speed, self.target.orientation + math.pi / 2, true)
+  if movement.left then
+    move (-4, self.target.orientation - math.pi / 2, true)
+    shift()
+  elseif movement.right then sx = dt * 10 * speed
+    move (-4, self.target.orientation + math.pi / 2, true)
+    shift()
   end
+
+  self:updateTarget (sx, sy)
 
   local col, row = Level:getMapCell(x, y)
   local tileType = Level:getCellType (col, row)
