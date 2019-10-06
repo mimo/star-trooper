@@ -1,27 +1,33 @@
 require 'helpers'
-
-local Entity = {}
---Entity.name = "foo"
-
 ------------------------------------------------------
+local Entity = {}
+------------------------------------------------------
+function Entity:initialize(name)
+  --local instance = {}
+  self.x, self.y = 0, 0
+  self.name = name
+  self.spritesheet = {}
+
+  self.spriteSize = {x = 0, y = 0}
+  self.texture = {}
+  self.target = {x = 0, y = 0}
+  self.target.orientation = 0
+  self.target.distance = 0
+  -- variables for animation
+  self.currentAnim = ''
+  self.frametime =  0
+  self.deltaS = 0.25
+  self.currentFrame = 1
+end
 
 function Entity:new(name)
   local instance = {}
-  instance.x, instance.y = 0, 0
-  instance.name = name
-  instance.spritesheet = {}
-  instance.spriteSize = {x = 0, y = 0}
-  instance.texture = {}
-  instance.target = {x = 0, y = 0}
-  instance.target.orientation = 0
-  instance.target.distance = 0
-  -- variables for animation
-  instance.currentAnim = ''
-  instance.frametime =  0
-  instance.deltaS = 0.25
-  instance.currentFrame = 1
+
   self.__index = self
-  return setmetatable (instance, self)
+  setmetatable (instance, self)
+
+  instance:initialize (name)
+  return instance
 end
 
 function Entity:loadSprites (file, sizeX, sizeY)
@@ -102,14 +108,13 @@ function Entity:move (dt, movement)
     shift()
   end
 
-  self:updateTarget (sx, sy)
-
   local col, row = Level:getMapCell(x, y)
   local tileType = Level:getCellType (col, row)
 
   if tileType == 8 or tileType == 7 or tileType == 21 then
     self.x = topositive (x)
     self.y = topositive (y)
+    self:updateTarget (sx, sy)
   end
 
 end

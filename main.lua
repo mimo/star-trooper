@@ -12,19 +12,41 @@ game.titleHeight = 32
 game.showmap = false
 game.showdebug = false
 game.debug = { messages = {} , lines = {} }
+game.sounds = {}
 ------------------------------------------------------
-local player = Entity:new("alexis")
-local bandit = Entity:new("croman")
--- angles at which entity's sprite anim change
-player.angles = {
-  math.pi / 4,
-  math.pi * 3/4,
-  math.pi / 4   + math.pi,
-  math.pi * 3/4 + math.pi }
-------------------------------------------------------
--- GLOBAL FUNCTIONS
-----
-function player:updateTarget (dx, dy)
+Human = Entity:new ("Human")
+Shoot = Entity:new ("shoot")
+
+function Shoot:new ()
+  local instance = {}
+  instance.name = name
+  self.__index = self
+  return setmetatable  (instance, self)
+end
+
+function Human:new(name)
+  local instance = {}
+
+  -- angles at which entity's sprite anim change
+  instance.angles = {
+    math.pi / 4,
+    math.pi * 3/4,
+    math.pi / 4   + math.pi,
+    math.pi * 3/4 + math.pi }
+
+  self.__index = self
+  setmetatable  (instance, self)
+
+  -- TODO : should explicitly call initialize of Entity table
+  instance:initialize(name)
+  return instance
+end
+
+function Human:shoot ()
+  love.audio.play(game.sounds.shoot)
+end
+
+function Human:updateTarget (dx, dy)
   self.target.x = self.target.x + dx
   self.target.y = self.target.y + dy
 
@@ -38,7 +60,7 @@ function player:updateTarget (dx, dy)
   self.target.orientation = theta
 end
 
-function player:changeAnimation ()
+function Human:changeAnimation ()
   local theta = self.target.orientation
 
   if theta < self.angles[1]
@@ -48,6 +70,13 @@ function player:changeAnimation ()
   else self.currentAnim = 'down'
   end
 end
+
+local player = Human:new("alexis")
+local bandit = Human:new("croman")
+
+------------------------------------------------------
+-- GLOBAL FUNCTIONS
+----
 
 function game:debugLine (x1, y1,  x2, y2)
   local l = { p1 ={}, p2= {}}
@@ -107,10 +136,18 @@ function love.update (dt)
   elseif love.keyboard.isDown("q") or love.keyboard.isDown("left") then direction.left = true
   end
 
-  player:move (dt, direction)
+  if love.mouse.isDown (1) then
+    player:shoot ()
+  end
 
+  player:move (dt, direction)
   player:changeAnimation()
   player:update (dt)
+
+
+  bandit:updateTarget(0, 0)
+  bandit:changeAnimation()
+  bandit:update (dt)
 
   game:updateView()
 end
@@ -128,6 +165,16 @@ function love.load ( )
 
   Level:load ("res/level1")
 
+  bandit:loadSprites("res/player.png", 16, 16)
+  bandit:setupAnimation ('left',  4, 2)
+  bandit:setupAnimation ('right', 4, 1)
+  bandit:setupAnimation ('up',    4, 3)
+  bandit:setupAnimation ('down',  4, 4)
+
+  bandit.x = 16 * 16
+  bandit.y = 16 * 7
+  bandit:updateTarget(player.x, player.y)
+
   player:loadSprites("res/player.png", 16, 16)
   player:setupAnimation ('left',  4, 2)
   player:setupAnimation ('right', 4, 1)
@@ -138,6 +185,7 @@ function love.load ( )
   player.y = 16 * 17 - 8
   player:updateTarget(player.x, player.y - 50)
 
+  game.sounds.shoot = love.audio.newSource ("res/sounds/Fire 6.mp3", "static")
   game.view.scalex = 2
   game.view.scaley = 2
   game.view.width = love.graphics.getWidth() / game.view.scalex
@@ -163,6 +211,9 @@ function love.draw ( )
     local x, y = game:mapToScreen (player.x, player.y)
     player:draw(x, y)
     UI.drawCursor (player.target.x - game.view.x, player.target.y - game.view.y, 4)
+    x, y = game:mapToScreen (bandit.x, bandit.y)
+    love.graphics.setColor (0.4, 0.8, 1, 1)
+    bandit:draw(x, y)
   love.graphics.pop()
 
   if game.showdebug then

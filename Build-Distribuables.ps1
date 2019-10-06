@@ -7,10 +7,13 @@ $lovefile   = "$releasedir\${name}.love"
 $executable = "$releasedir\$name\${name}.exe"
 $love = "$releasedir\$name\love.exe"
 
+$game_directories = "res"
+$game_files = "*.lua"
+
 # Création de l'archive .love
 mkdir -Force $releasedir
-Get-ChildItem -Path ".\*" -Include *.lua | Compress-Archive -DestinationPath "$archive" -CompressionLevel Optimal -Force | Out-Null
-Get-ChildItem -Directory -Exclude $releasedir,assets | Compress-Archive -DestinationPath "$archive" -CompressionLevel Optimal -Update | Out-Null
+Get-ChildItem -Path ".\*" -Include $game_files | Compress-Archive -DestinationPath "$archive" -CompressionLevel Optimal -Force | Out-Null
+Get-Item ".\*" -Include $game_directories | Compress-Archive -DestinationPath "$archive" -CompressionLevel Optimal -Update | Out-Null
 Move-Item -Force "$archive" "$lovefile"
 
 # Copie des binaires Love2d
