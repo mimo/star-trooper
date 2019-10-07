@@ -2,6 +2,7 @@
 UI = require 'ui'
 Level = require 'level'
 Entity = require 'entity'
+Mechanics = require 'mechanics'
 require 'helpers'
 ------------------------------------------------------
 -- GLOBAL OBJECTS
@@ -11,7 +12,6 @@ game.view = {x = 0, y = 0, width = 0, height = 0, scalex = 1, scaley = 1 }
 game.titleHeight = 32
 game.showmap = false
 game.showdebug = false
-game.debug = { messages = {} , lines = {} }
 game.sounds = {}
 ------------------------------------------------------
 Human = Entity:new ("Human")
@@ -77,19 +77,6 @@ local bandit = Human:new("croman")
 ------------------------------------------------------
 -- GLOBAL FUNCTIONS
 ----
-
-function game:debugLine (x1, y1,  x2, y2)
-  local l = { p1 ={}, p2= {}}
-  l.p1.x = x1
-  l.p1.y = y1
-  l.p2.x = x2
-  l.p2.y = y2
-
-  table.insert (self.debug.lines, l)
-end
-function game:debugMessage (str)
-  table.insert (self.debug.messages, str)
-end
 function game:mapToScreen (x, y)
   return x - self.view.x, y - self.view.y
 end
@@ -119,8 +106,7 @@ end
 -- LOVE CALLBACKS
 ----
 function love.update (dt)
-  game.debug.lines = {}
-  game.debug.messages = {}
+  Mechanics:clear ()
 
   local direction = {
     up = false,
@@ -154,6 +140,7 @@ end
 
 function love.mousemoved( x, y, dx, dy, istouch )
   player:updateTarget(dx, dy)
+  Mechanics:showMessage ("Mouse moved at "..x.."x"..y)
 end
 
 function love.load ( )
@@ -216,26 +203,11 @@ function love.draw ( )
     bandit:draw(x, y)
   love.graphics.pop()
 
-  if game.showdebug then
+  if Mechanics.show then
     love.graphics.push()
-    love.graphics.scale (game.view.scalex, game.view.scaley)
-
-    love.graphics.setColor (0.4, 0.4, 1, 1)
-    for i, l in ipairs (game.debug.lines) do
-      love.graphics.line (l.p1.x, l.p1.y, l.p2.x, l.p2.y)
-    end
-
+      love.graphics.scale (game.view.scalex, game.view.scaley)
+      Mechanics:display ()
     love.graphics.pop()
-
-    love.graphics.setColor (1, 1, 1, 0.85)
-    love.graphics.rectangle('fill', 10, 10, love.graphics.getWidth() * 0.4, love.graphics.getHeight() *0.4)
-    love.graphics.setColor (0, 0, 0, 1)
-    love.graphics.setFont(UI.infoFont)
-    for i, m in ipairs (game.debug.messages) do
-      love.graphics.print (m, 12, 12 + i * 15)
-    end
-    love.graphics.setColor (1, 1, 1, 1)
-
   else
     UI.showTitle ()
   end
@@ -266,5 +238,5 @@ function love.keypressed(key)
 
   if love.keyboard.isDown ('m') then game.showmap = not game.showmap end
 
-  if love.keyboard.isDown (')') then game.showdebug = not game.showdebug end
+  if love.keyboard.isDown (')') then Mechanics:toggle() end
 end
